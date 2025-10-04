@@ -21,6 +21,7 @@ func (h *TodoHandler) GetTodos(c echo.Context) error {
 
 // POST /todos
 func (h *TodoHandler) CreateTodo(c echo.Context) error {
+	println("log:echo-api:Creating a new todo")
 	todo := new(models.Todo)
 	if err := c.Bind(todo); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
@@ -32,6 +33,7 @@ func (h *TodoHandler) CreateTodo(c echo.Context) error {
 // GET /todos/:id
 func (h *TodoHandler) GetTodoByID(c echo.Context) error {
 	id := c.Param("id")
+	println("log:echo-api:Fetching todo by ID ", id)
 	var todo models.Todo
 	if err := h.DB.First(&todo, id).Error; err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Todo not found"})
@@ -39,25 +41,43 @@ func (h *TodoHandler) GetTodoByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, todo)
 }
 
+type UpdateTodoRequest struct {
+	Title     *string `json:"title"` // ใช้ pointer จะได้เช็คว่า field ถูกส่งมาหรือไม่
+	Completed *bool   `json:"completed"`
+}
+
 // PUT /todos/:id
 func (h *TodoHandler) UpdateTodo(c echo.Context) error {
 	id := c.Param("id")
+	println("log:echo-api:Updating todo by ID ", id)
+
 	var todo models.Todo
 	if err := h.DB.First(&todo, id).Error; err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Todo not found"})
 	}
 
-	if err := c.Bind(&todo); err != nil {
+	var req UpdateTodoRequest
+	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
+	// Update fields ถ้ามีข้อมูลส่งมา
+	if req.Title != nil {
+		todo.Title = *req.Title
+	}
+	if req.Completed != nil {
+		todo.Completed = *req.Completed
+	}
+
 	h.DB.Save(&todo)
+
 	return c.JSON(http.StatusOK, todo)
 }
 
 // DELETE /todos/:id
 func (h *TodoHandler) DeleteTodo(c echo.Context) error {
 	id := c.Param("id")
+	println("log:echo-api:Deleting todo by ID ", id)
 	var todo models.Todo
 	if err := h.DB.First(&todo, id).Error; err != nil {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "Todo not found"})
